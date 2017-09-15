@@ -7,6 +7,10 @@ import scala.concurrent.Future
   */
 trait FeeProvider {
 
+  /**
+    *
+    * @return a fee estimate for quick inclusion in the blockchain, in satoshi/kilobyte
+    */
   def getFeeratePerKB: Future[Long]
 
 }

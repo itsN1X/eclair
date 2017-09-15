@@ -7,7 +7,7 @@ import akka.actor.{ActorRef, ActorSystem, Props, SupervisorStrategy}
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import fr.acinq.eclair.blockchain.{CurrentFeerate, SpvWatcher}
-import fr.acinq.eclair.blockchain.fee.{BitpayInsightFeeProvider, ConstantFeeProvider}
+import fr.acinq.eclair.blockchain.fee.{BitpayInsightFeeProvider, BlockCypherFeeProvider, ConstantFeeProvider}
 import fr.acinq.eclair.blockchain.spv.BitcoinjKit
 import fr.acinq.eclair.blockchain.wallet.{BitcoinjWallet, EclairWallet}
 import fr.acinq.eclair.channel.Register
@@ -59,7 +59,11 @@ class Setup(datadir: File, wallet_opt: Option[EclairWallet] = None, overrideDefa
     logger.info(s"initial feeratePerKw=${Globals.feeratePerKw.get()}")
     val feeProvider = chain match {
       case "regtest" => new ConstantFeeProvider(defaultFeeratePerKb)
-      case _ => new BitpayInsightFeeProvider()
+      case "testnet" =>
+        config.getString("fee-provider") match {
+          case "bitpay" => new BitpayInsightFeeProvider()
+          case "blockcypher" => new BlockCypherFeeProvider()
+        }
     }
     system.scheduler.schedule(0 seconds, 10 minutes)(feeProvider.getFeeratePerKB.map {
       case feeratePerKB =>

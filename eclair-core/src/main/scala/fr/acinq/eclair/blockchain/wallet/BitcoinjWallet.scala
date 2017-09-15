@@ -1,6 +1,7 @@
 package fr.acinq.eclair.blockchain.wallet
 
 import fr.acinq.bitcoin.{BinaryData, Satoshi, Transaction}
+import fr.acinq.eclair.feerateKw2Kb
 import grizzled.slf4j.Logging
 import org.bitcoinj.core.{Coin, Context, Transaction => BitcoinjTransaction}
 import org.bitcoinj.script.Script
@@ -39,6 +40,7 @@ class BitcoinjWallet(val fWallet: Future[Wallet])(implicit ec: ExecutionContext)
     val tx = new BitcoinjTransaction(wallet.getParams)
     tx.addOutput(Coin.valueOf(amount.amount), script)
     val req = SendRequest.forTx(tx)
+    req.feePerKb = Coin.valueOf(feerateKw2Kb(feeRatePerKw))
     wallet.completeTx(req)
     val txOutputIndex = tx.getOutputs.find(_.getScriptPubKey.equals(script)).get.getIndex
     MakeFundingTxResponse(Transaction.read(tx.bitcoinSerialize()), txOutputIndex)
