@@ -4,8 +4,7 @@ FROM openjdk:8u121-jdk-alpine as BUILD
 # We can alternatively do as proposed by https://github.com/carlossg/docker-maven#packaging-a-local-repository-with-the-image
 # this was meant to make the image smaller, but we use multi-stage build so we don't care
 
-# We can remove dependency on git by setting <failOnNoGitDirectory>false</failOnNoGitDirectory> is set on git-commit-id-plugin
-RUN apk add --no-cache curl tar bash git
+RUN apk add --no-cache curl tar bash
 
 ARG MAVEN_VERSION=3.5.2
 ARG USER_HOME_DIR="/root"
@@ -30,27 +29,16 @@ COPY eclair-core/pom.xml eclair-core/pom.xml
 COPY eclair-node/pom.xml eclair-node/pom.xml
 COPY eclair-node-gui/pom.xml eclair-node-gui/pom.xml
 
-# We can remove dependency on git by setting <failOnNoGitDirectory>false</failOnNoGitDirectory> is set on git-commit-id-plugin
-RUN git init && \
-    git config  user.email "you@example.com" && \
-    git config user.name "Your Name" && \
-    git commit --allow-empty-message -m "" --allow-empty && \
-    # Get offline dependencies
-    mvn dependency:go-offline --fail-never && \
-    # For some reasons mvn miss dependencies which can be downloaded automatically if there is something to build
-    mkdir eclair-core/src && mkdir eclair-core/src/main && mkdir eclair-core/src/main/scala && touch eclair-core/src/main/scala/dummy.scala && \
-    mvn install -DskipTests -f eclair-core/pom.xml --fail-never && \
-    rm -rf eclair-core/src && mvn clean && \
-    # Same stuff with eclair-node
-    mkdir eclair-node/src && mkdir eclair-node/src/main && mkdir eclair-node/src/main/scala && touch eclair-node/src/main/scala/dummy.scala && \
-    mvn install -DskipTests -f eclair-node/pom.xml --fail-never && \
-    rm -rf eclair-node/src && mvn clean && \
-    # For some reasons, this fetch more dependencies
-    mvn package -pl eclair-node -am -DskipTests && mvn clean && \
-    rm -rf .git
+# Get offline dependencies
+RUN mvn dependency:go-offline --fail-never && \
+    # Plugin dependencies currently need to be fetched explicitely
+    mvn dependency:get -Dartifact=org.scala-lang:scala-compiler:2.11.11 && \
+    mvn dependency:get -Dartifact=co.paralleluniverse:capsule:1.0.3 && \
+    # Also download bitcoin-core for integration testing
+    mvn download:wget@download-bitcoind -f eclair-core/pom.xml
 
-# Phew, we have all the dependencies in local now. We can now copy sources and build offline
 COPY . .
+
 RUN mvn package -pl eclair-node -am -DskipTests -o
 # It might be good idea to run the tests here, so that the docker build fail if the code is bugged
 

@@ -23,6 +23,9 @@
                         <goals>
                             <goal>revision</goal>
                         </goals>
+                        <configuration>
+                            <failOnNoGitDirectory>${failOnNoGitDirectory}</failOnNoGitDirectory>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
